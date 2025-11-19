@@ -1,37 +1,36 @@
 import os
 import requests
-import uvicorn
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response
+from fastmcp import FastMCP
 from pydantic import BaseModel, Field
-class QueryPayload(BaseModel):
-    q: str = Field(..., description="Search query text.")
-    num: int = Field(10, ge=1, le=20, description="Number of results to request.")
 
-
-app = FastAPI()
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 SERPER_API_KEY = os.getenv("SERPER_API_KEY")
 
 
+class QueryPayload(BaseModel):
+    q: str = Field(..., description="Search query text.")
+    num: int = Field(
+        10,
+        ge=1,
+        le=20,
+        description="Number of results to return from Serper.",
+    )
+
+
 def serper_post(endpoint: str, payload: dict):
     """Helper to call Serper.dev API."""
+    if not SERPER_API_KEY:
+        return {"error": "SERPER_API_KEY is not configured"}
+
     try:
         r = requests.post(
             f"https://google.serper.dev/{endpoint}",
             headers={
                 "X-API-KEY": SERPER_API_KEY,
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
             },
             json=payload,
-            timeout=30
+            timeout=30,
         )
         r.raise_for_status()
         return r.json()
@@ -39,131 +38,30 @@ def serper_post(endpoint: str, payload: dict):
         return {"error": str(e)}
 
 
-# ---------------------------------------------------------
-# TOOLS (MCP)
-# ---------------------------------------------------------
-
-@app.post("/tools/search")
-def search_tool(body: QueryPayload):
-    return JSONResponse(serper_post("search", body.model_dump()))
-
-
-@app.post("/tools/news")
-def news_tool(body: QueryPayload):
-    return JSONResponse(serper_post("news", body.model_dump()))
-
-
-@app.post("/tools/images")
-def images_tool(body: QueryPayload):
-    return JSONResponse(serper_post("images", body.model_dump()))
-
-
-# ---------------------------------------------------------
-# MCP MANIFEST
-# ---------------------------------------------------------
-
-BASE_URL = os.getenv(
-    "PUBLIC_BASE_URL",
-    "https://serperdevmcp-production.up.railway.app"
+app = FastMCP(
+    "Serperdev MCP",
+    description="Google SERP, news, and image results via Serper.dev",
 )
 
-MANIFEST = {
-    "schema_version": "v1",
-    "name_for_human": "Serperdev MCP",
-    "name_for_model": "serperdev_mcp",
-    "description_for_human": "Google search, news, and image SERP data via Serper.dev.",
-    "description_for_model": (
-        "Search, news, and images via Serper.dev. "
-        "Structured SERP results for AI agents."
-    ),
-    "auth": {"type": "none"},
-    "api": {
-        "type": "openapi",
-        "url": f"{BASE_URL}/openapi.json"
-    },
-    "logo_url": "https://serper.dev/favicon.ico",
-    "contact_email": "support@serper.dev",
-    "legal_info_url": "https://serper.dev/terms",
-    "tools": [
-        {
-            "name": "search",
-            "description": "Run a Google search via Serper.dev.",
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "q": {"type": "string"},
-                    "num": {"type": "integer"}
-                },
-                "required": ["q"]
-            }
-        },
-        {
-            "name": "news",
-            "description": "Search news articles.",
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "q": {"type": "string"},
-                    "num": {"type": "integer"}
-                },
-                "required": ["q"]
-            }
-        },
-        {
-            "name": "images",
-            "description": "Search for images.",
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "q": {"type": "string"},
-                    "num": {"type": "integer"}
-                },
-                "required": ["q"]
-            }
-        }
-    ]
-}
+
+@app.tool()
+def search(payload: QueryPayload):
+    """Run a Google search via Serper.dev."""
+    return serper_post("search", payload.model_dump())
 
 
-@app.get("/")
-def root():
-    return {
-        "message": "Serperdev MCP is running.",
-        "manifest": "/.well-known/ai-plugin.json",
-        "health": "/healthz"
-    }
+@app.tool()
+def news(payload: QueryPayload):
+    """Search news articles via Serper.dev."""
+    return serper_post("news", payload.model_dump())
 
 
-@app.options("/")
-def options_root():
-    return Response(status_code=204)
+@app.tool()
+def images(payload: QueryPayload):
+    """Search for images via Serper.dev."""
+    return serper_post("images", payload.model_dump())
 
-
-@app.post("/")
-def list_actions():
-    return {
-        "server": {
-            "name": MANIFEST["name_for_human"],
-            "description": MANIFEST["description_for_model"],
-        },
-        "actions": MANIFEST["tools"],
-    }
-
-
-@app.get("/healthz")
-def health_check():
-    return {"ok": True}
-
-
-@app.get("/.well-known/ai-plugin.json")
-@app.get("/.well-known/ai-plugin.json/")
-def plugin_manifest():
-    return MANIFEST
-
-# IMPORTANT:
-# Nixpacks can still launch uvicorn via `python server.py`, so we expose a direct
-# entrypoint for Railway and similar environments.
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", "8000"))
-    uvicorn.run("server:app", host="0.0.0.0", port=port)
+    port = int(os.getenv("PORT", "8080"))
+    app.run("http", host="0.0.0.0", port=port)
