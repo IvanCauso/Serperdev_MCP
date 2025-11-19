@@ -56,15 +56,28 @@ def images_tool(body: dict):
 # MCP MANIFEST
 # ---------------------------------------------------------
 
+BASE_URL = os.getenv(
+    "PUBLIC_BASE_URL",
+    "https://serperdevmcp-production.up.railway.app"
+)
+
 MANIFEST = {
     "schema_version": "v1",
     "name_for_human": "Serperdev MCP",
     "name_for_model": "serperdev_mcp",
+    "description_for_human": "Google search, news, and image SERP data via Serper.dev.",
     "description_for_model": (
         "Search, news, and images via Serper.dev. "
         "Structured SERP results for AI agents."
     ),
     "auth": {"type": "none"},
+    "api": {
+        "type": "openapi",
+        "url": f"{BASE_URL}/openapi.json"
+    },
+    "logo_url": "https://serper.dev/favicon.ico",
+    "contact_email": "support@serper.dev",
+    "legal_info_url": "https://serper.dev/terms",
     "tools": [
         {
             "name": "search",
