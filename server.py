@@ -56,56 +56,74 @@ def images_tool(body: dict):
 # MCP MANIFEST
 # ---------------------------------------------------------
 
-@app.get("/.well-known/ai-plugin.json")
-def plugin_manifest():
-    return {
-        "schema_version": "v1",
-        "name_for_human": "Serperdev MCP",
-        "name_for_model": "serperdev_mcp",
-        "description_for_model": (
-            "Search, news, and images via Serper.dev. "
-            "Structured SERP results for AI agents."
-        ),
-        "auth": {"type": "none"},
-        "tools": [
-            {
-                "name": "search",
-                "description": "Run a Google search via Serper.dev.",
-                "input_schema": {
-                    "type": "object",
-                    "properties": {
-                        "q": {"type": "string"},
-                        "num": {"type": "integer"}
-                    },
-                    "required": ["q"]
-                }
-            },
-            {
-                "name": "news",
-                "description": "Search news articles.",
-                "input_schema": {
-                    "type": "object",
-                    "properties": {
-                        "q": {"type": "string"},
-                        "num": {"type": "integer"}
-                    },
-                    "required": ["q"]
-                }
-            },
-            {
-                "name": "images",
-                "description": "Search for images.",
-                "input_schema": {
-                    "type": "object",
-                    "properties": {
-                        "q": {"type": "string"},
-                        "num": {"type": "integer"}
-                    },
-                    "required": ["q"]
-                }
+MANIFEST = {
+    "schema_version": "v1",
+    "name_for_human": "Serperdev MCP",
+    "name_for_model": "serperdev_mcp",
+    "description_for_model": (
+        "Search, news, and images via Serper.dev. "
+        "Structured SERP results for AI agents."
+    ),
+    "auth": {"type": "none"},
+    "tools": [
+        {
+            "name": "search",
+            "description": "Run a Google search via Serper.dev.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "q": {"type": "string"},
+                    "num": {"type": "integer"}
+                },
+                "required": ["q"]
             }
-        ]
+        },
+        {
+            "name": "news",
+            "description": "Search news articles.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "q": {"type": "string"},
+                    "num": {"type": "integer"}
+                },
+                "required": ["q"]
+            }
+        },
+        {
+            "name": "images",
+            "description": "Search for images.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "q": {"type": "string"},
+                    "num": {"type": "integer"}
+                },
+                "required": ["q"]
+            }
+        }
+    ]
+}
+
+
+@app.get("/")
+def root():
+    return {
+        "message": "Serperdev MCP is running.",
+        "manifest": "/.well-known/ai-plugin.json",
+        "health": "/healthz"
     }
+
+
+@app.get("/healthz")
+def health_check():
+    return {"ok": True}
+
+
+@app.get("/.well-known/ai-plugin.json")
+@app.get("/.well-known/ai-plugin.json/")
+def plugin_manifest():
+    return MANIFEST
 
 # IMPORTANT:
 # Nixpacks can still launch uvicorn via `python server.py`, so we expose a direct
