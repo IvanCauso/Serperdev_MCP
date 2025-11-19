@@ -1,24 +1,18 @@
 import os
 import requests
-from fastmcp import FastMCP
-from typing import Optional, Dict, Any
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 
-# Create MCP server
-app = FastMCP("serperdev-mcp")
+app = FastAPI()
 
-def get_api_key():
-    api_key = os.getenv("SERPER_API_KEY")
-    if not api_key:
-        raise RuntimeError("Missing SERPER_API_KEY environment variable")
-    return api_key
+SERPER_API_KEY = os.getenv("SERPER_API_KEY")
 
-def serper_request(endpoint: str, params: Dict[str, Any]) -> Dict[str, Any]:
-    api_key = get_api_key()
+def serper_post(endpoint: str, payload: dict):
     try:
         r = requests.post(
             f"https://google.serper.dev/{endpoint}",
-            headers={"X-API-KEY": api_key, "Content-Type": "application/json"},
-            json=params,
+            headers={"X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json"},
+            json=payload,
             timeout=30
         )
         r.raise_for_status()
@@ -26,28 +20,71 @@ def serper_request(endpoint: str, params: Dict[str, Any]) -> Dict[str, Any]:
     except Exception as e:
         return {"error": str(e)}
 
-# TOOLS --------------------------------------------------
 
-@app.tool()
-def search(q: str, num: int = 10):
-    return serper_request("search", {"q": q, "num": num})
+@app.post("/tools/search")
+def search_tool(body: dict):
+    q = body.get("q")
+    num = body.get("num", 10)
+    return JSONResponse(serper_post("search", {"q": q, "num": num}))
 
-@app.tool()
-def images(q: str, num: int = 10):
-    return serper_request("images", {"q": q, "num": num})
 
-@app.tool()
-def news(q: str, num: int = 10):
-    return serper_request("news", {"q": q, "num": num})
+@app.post("/tools/news")
+def news_tool(body: dict):
+    q = body.get("q")
+    num = body.get("num", 10)
+    return JSONResponse(serper_post("news", {"q": q, "num": num}))
 
-@app.tool()
-def autocomplete(q: str):
-    return serper_request("autocomplete", {"q": q})
 
-# --------------------------------------------------------
+@app.post("/tools/images")
+def images_tool(body: dict):
+    q = body.get("q")
+    num = body.get("num", 10)
+    return JSONResponse(serper_post("images", {"q": q, "num": num}))
 
-# START MCP SERVER ---------------------------------------
-if __name__ == "__main__":
-    port = int(os.getenv("PORT", "8080"))
-    print(f"MCP server running on port {port}")
-    app.run(host="0.0.0.0", port=port)
+
+@app.get("/.well-known/ai-plugin.json")
+def plugin_manifest():
+    return {
+        "schema_version": "v1",
+        "name_for_human": "Serperdev MCP",
+        "name_for_model": "serperdev_mcp",
+        "description_for_model": "Provides search, news, and image results via Serper.dev",
+        "tools": [
+            {
+                "name": "search",
+                "description": "Run a google search via Serper.dev",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "q": {"type": "string"},
+                        "num": {"type": "integer"}
+                    },
+                    "required": ["q"]
+                }
+            },
+            {
+                "name": "news",
+                "description": "Search news via Serper.dev",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "q": {"type": "string"},
+                        "num": {"type": "integer"}
+                    },
+                    "required": ["q"]
+                }
+            },
+            {
+                "name": "images",
+                "description": "Search images via Serper.dev",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "q": {"type": "string"},
+                        "num": {"type": "integer"}
+                    },
+                    "required": ["q"]
+                }
+            }
+        ]
+    }
