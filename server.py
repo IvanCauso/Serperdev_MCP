@@ -1,5 +1,6 @@
 import os
 import requests
+import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
@@ -107,4 +108,9 @@ def plugin_manifest():
     }
 
 # IMPORTANT:
-# Do NOT run uvicorn here. The process is launched by Nixpacks (see nixpacks.toml).
+# Nixpacks can still launch uvicorn via `python server.py`, so we expose a direct
+# entrypoint for Railway and similar environments.
+
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", "8000"))
+    uvicorn.run("server:app", host="0.0.0.0", port=port)
