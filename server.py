@@ -7,11 +7,16 @@ app = FastAPI()
 
 SERPER_API_KEY = os.getenv("SERPER_API_KEY")
 
+
 def serper_post(endpoint: str, payload: dict):
+    """Helper to call Serper.dev API."""
     try:
         r = requests.post(
             f"https://google.serper.dev/{endpoint}",
-            headers={"X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json"},
+            headers={
+                "X-API-KEY": SERPER_API_KEY,
+                "Content-Type": "application/json"
+            },
             json=payload,
             timeout=30
         )
@@ -20,6 +25,10 @@ def serper_post(endpoint: str, payload: dict):
     except Exception as e:
         return {"error": str(e)}
 
+
+# ---------------------------------------------------------
+# TOOLS (MCP)
+# ---------------------------------------------------------
 
 @app.post("/tools/search")
 def search_tool(body: dict):
@@ -42,17 +51,25 @@ def images_tool(body: dict):
     return JSONResponse(serper_post("images", {"q": q, "num": num}))
 
 
+# ---------------------------------------------------------
+# MCP MANIFEST
+# ---------------------------------------------------------
+
 @app.get("/.well-known/ai-plugin.json")
 def plugin_manifest():
     return {
         "schema_version": "v1",
         "name_for_human": "Serperdev MCP",
         "name_for_model": "serperdev_mcp",
-        "description_for_model": "Provides search, news, and image results via Serper.dev",
+        "description_for_model": (
+            "Search, news, and images via Serper.dev. "
+            "Structured SERP results for AI agents."
+        ),
+        "auth": {"type": "none"},
         "tools": [
             {
                 "name": "search",
-                "description": "Run a google search via Serper.dev",
+                "description": "Run a Google search via Serper.dev.",
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -64,7 +81,7 @@ def plugin_manifest():
             },
             {
                 "name": "news",
-                "description": "Search news via Serper.dev",
+                "description": "Search news articles.",
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -76,7 +93,7 @@ def plugin_manifest():
             },
             {
                 "name": "images",
-                "description": "Search images via Serper.dev",
+                "description": "Search for images.",
                 "input_schema": {
                     "type": "object",
                     "properties": {
@@ -88,3 +105,6 @@ def plugin_manifest():
             }
         ]
     }
+
+# IMPORTANT:
+# Do NOT run uvicorn here. The process is launched by Nixpacks (see nixpacks.toml).
