@@ -3,6 +3,11 @@ import requests
 import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
+class QueryPayload(BaseModel):
+    q: str = Field(..., description="Search query text.")
+    num: int = Field(10, ge=1, le=20, description="Number of results to request.")
+
 
 app = FastAPI()
 
@@ -32,24 +37,18 @@ def serper_post(endpoint: str, payload: dict):
 # ---------------------------------------------------------
 
 @app.post("/tools/search")
-def search_tool(body: dict):
-    q = body.get("q")
-    num = body.get("num", 10)
-    return JSONResponse(serper_post("search", {"q": q, "num": num}))
+def search_tool(body: QueryPayload):
+    return JSONResponse(serper_post("search", body.model_dump()))
 
 
 @app.post("/tools/news")
-def news_tool(body: dict):
-    q = body.get("q")
-    num = body.get("num", 10)
-    return JSONResponse(serper_post("news", {"q": q, "num": num}))
+def news_tool(body: QueryPayload):
+    return JSONResponse(serper_post("news", body.model_dump()))
 
 
 @app.post("/tools/images")
-def images_tool(body: dict):
-    q = body.get("q")
-    num = body.get("num", 10)
-    return JSONResponse(serper_post("images", {"q": q, "num": num}))
+def images_tool(body: QueryPayload):
+    return JSONResponse(serper_post("images", body.model_dump()))
 
 
 # ---------------------------------------------------------
