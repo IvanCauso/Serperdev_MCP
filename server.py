@@ -2,7 +2,8 @@ import os
 import requests
 import uvicorn
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 class QueryPayload(BaseModel):
     q: str = Field(..., description="Search query text.")
@@ -10,6 +11,12 @@ class QueryPayload(BaseModel):
 
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 SERPER_API_KEY = os.getenv("SERPER_API_KEY")
 
@@ -124,6 +131,22 @@ def root():
         "message": "Serperdev MCP is running.",
         "manifest": "/.well-known/ai-plugin.json",
         "health": "/healthz"
+    }
+
+
+@app.options("/")
+def options_root():
+    return Response(status_code=204)
+
+
+@app.post("/")
+def list_actions():
+    return {
+        "server": {
+            "name": MANIFEST["name_for_human"],
+            "description": MANIFEST["description_for_model"],
+        },
+        "actions": MANIFEST["tools"],
     }
 
 
